@@ -17,7 +17,7 @@ public class XYZController {
     @GetMapping("/perform-operation")
     public ResponseEntity<String> performOperation()
     {
-        return service.xyService();
+        return service.getExtendedServiceAuthorizationResponse();
     }
 
 }
