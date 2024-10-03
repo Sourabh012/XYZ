@@ -1,0 +1,102 @@
+package com.example.XYZ.controller;
+
+import com.example.XYZ.Service.XYZService;
+import com.example.XYZ.model.ErrorResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
+
+@RestController
+public class XYZController {
+
+    @Autowired
+    XYZService service;
+
+    @GetMapping("/perform-operation")
+    public ResponseEntity<String> performOperation()
+    {
+        return service.getExtendedServiceAuthorizationResponse();
+
+    }
+
+//    @GetMapping("/perform-operation1")
+//    public ResponseEntity<Map<String, Object>> getResponseWithoutStatusCode2000()
+//    {
+//        return service.getResponseWithoutStatusCode2000();
+//
+//    }
+//
+//
+//    @GetMapping("/perform-operation2")
+//    public ResponseEntity<Map<String, Object>> getSuccessResponse()
+//    {
+//        return service.getSuccessResponse();
+//
+//    }
+//
+//
+//
+//    @GetMapping("/perform-operation3")
+//    public ResponseEntity<Map<String, Object>> getErrorResponseWithout3000()
+//    {
+//        return service.getExtendedServiceAuthorizationResponse();
+//
+//    }
+
+}
+
+
+
+==============================================================================================
+
+package com.example.XYZ.Service;
+
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+
+
+@RestController
+public class XYZService {
+
+    public ResponseEntity<String> getExtendedServiceAuthorizationResponse() {
+        String response = "{\"getExtendedServiceAuthorizationResponse\": {\"status\": {\"statusCode\": \"3000\","
+                + "\"detail\": \"Backend Service Error\",\"severity\": \"ERROR\","
+                + "\"additionalStatus\": {\"statusCode\":\"B-3025\","
+                + "\"detail\": \"Service Auth not found\",\"severity\": \"ERROR\","
+                + "\"serviceName\": \"GetAuthDetails-GET API\"}}}}";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("X-Dummy-Header-1", "DummyValue1");
+        headers.set("X-Dummy-Header-2", "DummyValue2");
+        headers.set("X-Dummy-Header-3", "DummyValue3");
+
+        return new ResponseEntity<>(response,headers, HttpStatus.OK);
+    }
+
+    // Endpoint 2: Response does not contain statusCode "3000"
+    public ResponseEntity<String> getResponseWithoutStatusCode2000() {
+        String response = "{\"getExtendedServiceAuthorizationResponse\": {\"status\": {"
+                + "\"detail\": \"Operation Successful\",\"severity\": \"INFO\","
+                + "\"additionalStatus\": {\"statusCode\":\"5445\","
+                + "\"detail\": \"Additional details found\",\"severity\": \"INFO\","
+                + "\"serviceName\": \"GetAuthDetails-GET API\"}}}}";
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    // Endpoint 3: Response with success message and a different status code
+    public ResponseEntity<String> getSuccessResponse() {
+        String response = "{\"getExtendedServiceAuthorizationResponse\": {\"status\": {\"statusCode\": \"1\","
+                + "\"detail\": \"Request processed successfully\",\"severity\": \"INFO\"}}}";
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+}
