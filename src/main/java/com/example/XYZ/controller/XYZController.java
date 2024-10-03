@@ -18,6 +18,31 @@ public class XYZController {
     public ResponseEntity<String> performOperation()
     {
         return service.getExtendedServiceAuthorizationResponse();
+
+    }
+
+    @GetMapping("/perform-operation1")
+    public ResponseEntity<String> getResponseWithoutStatusCode2000()
+    {
+        return service.getResponseWithoutStatusCode2000();
+
+    }
+
+
+    @GetMapping("/perform-operation2")
+    public ResponseEntity<String> getSuccessResponse()
+    {
+        return service.getSuccessResponse();
+
+    }
+
+
+
+    @GetMapping("/perform-operation3")
+    public ResponseEntity<String> getErrorResponseWithout3000()
+    {
+        return service.getExtendedServiceAuthorizationResponse();
+
     }
 
 }
