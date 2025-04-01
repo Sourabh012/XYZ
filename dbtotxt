@@ -132,4 +132,29 @@ public class TransactionService {
 
 }
 
+--------------------------------------------------------------------------------------------
+
+
+package spring.jpa.stream.controller;
+
+import org.springframework.web.bind.annotation.*;
+import spring.jpa.stream.service.TransactionService;
+
+@RestController
+@RequestMapping("/api/transactions")
+public class TransactionController {
+
+    private final TransactionService transactionService;
+
+    public TransactionController(TransactionService transactionService) {
+        this.transactionService = transactionService;
+    }
+
+    @GetMapping("/generate-report")
+    public String generateReport() {
+        return transactionService.generateTransactionReport();
+    }
+}
+
+
 
