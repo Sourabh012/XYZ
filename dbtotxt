@@ -1,0 +1,135 @@
+package spring.jpa.stream.repository;
+
+import jakarta.persistence.QueryHint;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
+import org.springframework.stereotype.Repository;
+import spring.jpa.stream.entity.Transaction;
+
+import java.time.LocalDateTime;
+import java.util.stream.Stream;
+
+@Repository
+public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+
+    @QueryHints({
+            @QueryHint(name = "org.hibernate.fetchSize", value = "1000"),
+            @QueryHint(name = "org.hibernate.jdbc.fetch_direction", value = "FORWARD_ONLY") // Optional for better performance
+    })
+    @Query("SELECT t FROM Transaction t WHERE t.createDts BETWEEN :yesterday10PM AND :today10PM")
+    Stream<Transaction> findTransactionsBetween(LocalDateTime yesterday10PM, LocalDateTime today10PM);
+}
+
+
+
+--------------------------------------------------------------------
+
+spring.application.name=stream
+
+# IBM Db2 Database Configuration
+spring.datasource.url=jdbc:db2://localhost:50000/TRANSACTION_DB5
+spring.datasource.username=db2admin
+spring.datasource.password=password
+spring.datasource.driver-class-name=com.ibm.db2.jcc.DB2Driver
+
+# Hibernate properties for Db2
+spring.jpa.database-platform=org.hibernate.dialect.DB2Dialect
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.jdbc.fetch_size=1000
+
+# Log Hibernate query execution
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.orm.jdbc.bind=TRACE
+logging.level.org.springframework.jdbc.datasource.DataSourceUtils=DEBUG
+
+
+
+------------------------------------------------------------------------
+
+package spring.jpa.stream.service;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import spring.jpa.stream.entity.Transaction;
+import spring.jpa.stream.repository.TransactionRepository;
+
+import java.io.*;
+import java.nio.file.*;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.stream.Stream;
+
+@Service
+public class TransactionService {
+
+    private final TransactionRepository transactionRepository;
+    private static final int BATCH_SIZE = 5000;
+
+    public TransactionService(TransactionRepository transactionRepository) {
+        this.transactionRepository = transactionRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public String generateTransactionReport() {
+        LocalDateTime today10PM = LocalDateTime.now(ZoneId.of("Asia/Kolkata")).withHour(22).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime yesterday10PM = today10PM.minusDays(1);
+
+        String fileName = "Response_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + ".txt";
+        Path filePath = Paths.get(fileName);
+
+        boolean fileExists = Files.exists(filePath);
+
+        try (Stream<Transaction> transactionStream = transactionRepository.findTransactionsBetween(yesterday10PM, today10PM);
+             BufferedWriter writer = Files.newBufferedWriter(filePath, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+
+            if (transactionStream instanceof Stream) {
+                System.out.println("Using JPA Stream!");
+            } else {
+                System.out.println("Using List!");
+            }
+
+            if (!fileExists) {
+                writer.write("MQ_PAYLOAD_TXT,UNIQUE_TRNX_ID\n");
+            }
+
+            StringBuilder batchData = new StringBuilder();
+            int count = 0;
+
+            for (Transaction transaction : (Iterable<Transaction>) transactionStream::iterator) {
+                batchData.append(transaction.getMqPayloadTxt())
+                        .append(",")
+                        .append(transaction.getUniqueTransactionId())
+                        .append("\n");
+
+                count++;
+
+                // Process in chunks of 5000
+                if (count % 5000 == 0) {
+                    writer.write(batchData.toString());
+                    writer.flush();
+                    batchData.setLength(0);
+                    System.out.println("Processed " + count + " records...");
+                }
+            }
+
+            // Write any remaining records
+            if (!batchData.isEmpty()) {
+                writer.write(batchData.toString());
+                writer.flush();
+            }
+
+            return "File generated successfully: " + filePath.toAbsolutePath();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return "Error while writing the file";
+        }
+    }
+
+}
+
+
